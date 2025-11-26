@@ -1,3 +1,4 @@
-# monadmoneygame
+# Monad Master Mind
+
 Gamemonad
 monadmainet
