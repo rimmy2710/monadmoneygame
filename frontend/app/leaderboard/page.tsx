@@ -44,15 +44,23 @@ const shortAddress = (address: string) =>
   address.length <= 10 ? address : `${address.slice(0, 6)}...${address.slice(-4)}`;
 
 const socialBadge = (label: string, variant: BadgeVariantKey) => (
-  <Badge variant={variant} className="text-[11px]">{label}</Badge>
+  <Badge variant={variant} className="text-[11px]">
+    {label}
+  </Badge>
 );
 
 const formatTime = (date: Date) =>
-  date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  date.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
 
 export default function LeaderboardPage() {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
-  const [sortBy, setSortBy] = useState<"medals" | "gamesWon" | "referredCount">("medals");
+  const [sortBy, setSortBy] = useState<"medals" | "gamesWon" | "referredCount">(
+    "medals"
+  );
   const [limit, setLimit] = useState<number>(50);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -61,27 +69,31 @@ export default function LeaderboardPage() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
-  const loadLeaderboard = useCallback(async (options?: { silent?: boolean; background?: boolean }) => {
-    if (!options?.background) setLoading(true);
-    setRefreshing(true);
-    setError(null);
-    try {
-      const data = await fetchLeaderboard(sortBy, limit);
-      setEntries(data);
-      setLastUpdated(new Date());
-      setHasLoadedOnce(true);
-      if (!options?.silent) {
-        showSuccess("Leaderboard updated.");
+  const loadLeaderboard = useCallback(
+    async (options?: { silent?: boolean; background?: boolean }) => {
+      if (!options?.background) setLoading(true);
+      setRefreshing(true);
+      setError(null);
+      try {
+        const data = await fetchLeaderboard(sortBy, limit);
+        setEntries(data);
+        setLastUpdated(new Date());
+        setHasLoadedOnce(true);
+        if (!options?.silent) {
+          showSuccess("Leaderboard updated.");
+        }
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Failed to load leaderboard";
+        setError(message);
+        showError(message);
+      } finally {
+        if (!options?.background) setLoading(false);
+        setRefreshing(false);
       }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to load leaderboard";
-      setError(message);
-      showError(message);
-    } finally {
-      if (!options?.background) setLoading(false);
-      setRefreshing(false);
-    }
-  }, [limit, sortBy]);
+    },
+    [limit, sortBy]
+  );
 
   useEffect(() => {
     loadLeaderboard({ silent: true });
@@ -102,7 +114,9 @@ export default function LeaderboardPage() {
               <select
                 className="rounded-lg border border-white/10 bg-slate-900/60 px-3 py-2 text-sm"
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+                onChange={(e) =>
+                  setSortBy(e.target.value as typeof sortBy)
+                }
               >
                 {sortOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -137,7 +151,10 @@ export default function LeaderboardPage() {
               Auto refresh (30s)
             </label>
 
-            <Button onClick={loadLeaderboard} disabled={loading || refreshing}>
+            <Button
+              onClick={() => loadLeaderboard()}
+              disabled={loading || refreshing}
+            >
               <RefreshIcon spinning={refreshing || loading} />
               {(loading || refreshing) && <Spinner />} Refresh
             </Button>
@@ -146,7 +163,9 @@ export default function LeaderboardPage() {
       />
 
       {lastUpdated && (
-        <p className="text-sm text-slate-400">Last updated: {formatTime(lastUpdated)}</p>
+        <p className="text-sm text-slate-400">
+          Last updated: {formatTime(lastUpdated)}
+        </p>
       )}
 
       {loading && entries.length === 0 && (
@@ -158,8 +177,12 @@ export default function LeaderboardPage() {
         </div>
       )}
 
-      {error && entries.length === 0 && <ErrorState message={error} onRetry={loadLeaderboard} />}
-      {error && entries.length > 0 && <ErrorState message={error} onRetry={loadLeaderboard} />}
+      {error && entries.length === 0 && (
+        <ErrorState message={error} onRetry={loadLeaderboard} />
+      )}
+      {error && entries.length > 0 && (
+        <ErrorState message={error} onRetry={loadLeaderboard} />
+      )}
 
       <div className="flex flex-col gap-3">
         {entries.map((player, index) => {
@@ -181,17 +204,27 @@ export default function LeaderboardPage() {
                     <Badge variant={tierVariant}>{player.activityTier}</Badge>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
-                    {player.linkedSocials.gmail && socialBadge("Gmail", "warning")}
-                    {player.linkedSocials.x && socialBadge("X", "default")}
-                    {player.linkedSocials.discord && socialBadge("Discord", "info")}
+                    {player.linkedSocials.gmail &&
+                      socialBadge("Gmail", "warning")}
+                    {player.linkedSocials.x &&
+                      socialBadge("X", "default")}
+                    {player.linkedSocials.discord &&
+                      socialBadge("Discord", "info")}
                   </div>
                 </div>
               </div>
 
               <div className="flex flex-1 flex-wrap items-center justify-end gap-6 text-right text-sm sm:text-base">
                 <StatBlock label="Medals" value={player.medals} />
-                <StatBlock label="Wins" value={player.gamesWon} subLabel={`/${player.gamesPlayed} played`} />
-                <StatBlock label="Referrals" value={player.referredCount} />
+                <StatBlock
+                  label="Wins"
+                  value={player.gamesWon}
+                  subLabel={`/${player.gamesPlayed} played`}
+                />
+                <StatBlock
+                  label="Referrals"
+                  value={player.referredCount}
+                />
               </div>
             </Card>
           );
@@ -202,7 +235,7 @@ export default function LeaderboardPage() {
             title="No leaderboard entries"
             description="There are no players to show yet. Check back soon."
             action={
-              <Button variant="secondary" onClick={loadLeaderboard}>
+              <Button variant="secondary" onClick={() => loadLeaderboard()}>
                 Refresh
               </Button>
             }
@@ -226,7 +259,9 @@ function StatBlock({
     <div className="flex flex-col items-end">
       <div className="text-lg font-semibold">{value}</div>
       <div className="text-xs text-slate-400">{label}</div>
-      {subLabel && <div className="text-[11px] text-slate-500">{subLabel}</div>}
+      {subLabel && (
+        <div className="text-[11px] text-slate-500">{subLabel}</div>
+      )}
     </div>
   );
 }
