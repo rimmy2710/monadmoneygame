@@ -1,6 +1,9 @@
 import { FastifyInstance } from "fastify";
 import { getMasterMindContract } from "../lib/monad";
 import { getReferralStats } from "../store/referrals";
+import { getSocials } from "../store/socials";
+import { computeActivityTier } from "../lib/activity";
+import { registerPlayer } from "../store/players";
 import { MeProfile } from "../types";
 
 const mockMe: MeProfile = {
@@ -32,10 +35,18 @@ export default async function meRoutes(fastify: FastifyInstance) {
       ])) as [any, any];
 
       const r = getReferralStats(address);
+      const socials = getSocials(address);
 
       const medalsOnChain = Number(medals);
       const medalsPending = r.pendingMedals;
       const totalMedals = medalsOnChain + medalsPending;
+
+      const activityTier = computeActivityTier({
+        medals: totalMedals,
+        gamesPlayed: Number(stats.gamesPlayed),
+        referredCount: r.referredCount,
+        socials,
+      });
 
       const profile: MeProfile = {
         address,
@@ -44,11 +55,14 @@ export default async function meRoutes(fastify: FastifyInstance) {
         medalsOnChain,
         gamesPlayed: Number(stats.gamesPlayed),
         gamesWon: Number(stats.gamesWon),
-        activityTier: "Unknown",
-        linkedSocials: { gmail: false, x: false, discord: false },
+        activityTier,
+        linkedSocials: socials,
         referralCode: r.referralCode,
         referredCount: r.referredCount,
       };
+
+      // track known player for leaderboard
+      registerPlayer(address);
 
       return reply.send(profile);
     } catch (err) {

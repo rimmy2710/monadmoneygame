@@ -1,4 +1,5 @@
 import type { ReferralStats, ReferralUseResult } from "../types";
+import { registerPlayers } from "./players";
 
 const addressToCode = new Map<string, string>();
 const codeToAddress = new Map<string, string>();
@@ -41,8 +42,17 @@ export function registerReferral(
   refs.add(newAddress.toLowerCase());
   referrerToReferees.set(referrer, refs);
 
-  pendingMedals.set(referrer, (pendingMedals.get(referrer) ?? 0) + REFERRER_REWARD);
-  pendingMedals.set(newAddress, (pendingMedals.get(newAddress) ?? 0) + NEW_USER_REWARD);
+  pendingMedals.set(
+    referrer,
+    (pendingMedals.get(referrer) ?? 0) + REFERRER_REWARD
+  );
+  pendingMedals.set(
+    newAddress,
+    (pendingMedals.get(newAddress) ?? 0) + NEW_USER_REWARD
+  );
+
+  // đăng ký cả referrer và newUser vào known players để leaderboard thấy được
+  registerPlayers([referrer, newAddress]);
 
   return {
     ok: true,
