@@ -10,6 +10,17 @@ export interface GameSummary {
   entryFee: string;
   pool: string;
   currentRound: number;
+  players?: string[]; // <- giữ lại từ Codex
+}
+
+export interface LeaderboardEntry {
+  address: string;
+  medals: number;
+  gamesPlayed: number;
+  gamesWon: number;
+  referredCount: number;
+  activityTier: string;
+  linkedSocials: Record<Social, boolean>;
 }
 
 export interface MeProfile {
@@ -41,6 +52,27 @@ export async function fetchMe(address: string): Promise<MeProfile> {
 export async function fetchGames(): Promise<GameSummary[]> {
   const res = await fetch(`${API_BASE}/games`);
   return handleResponse<GameSummary[]>(res, "Failed to load games");
+}
+
+export async function fetchLeaderboard(
+  sortBy: string = "medals",
+  limit: number = 50
+): Promise<LeaderboardEntry[]> {
+  const params = new URLSearchParams({ sortBy, limit: String(limit) });
+  const res = await fetch(`${API_BASE}/leaderboard?${params.toString()}`);
+  return handleResponse<LeaderboardEntry[]>(res, "Failed to load leaderboard");
+}
+
+export async function fetchMyGames(address: string): Promise<GameSummary[]> {
+  const games = await fetchGames();
+  const normalized = address.trim().toLowerCase();
+
+  if (!normalized) return [];
+
+  return games.filter((game) => {
+    const players = game.players ?? [];
+    return players.some((player) => player.toLowerCase() === normalized);
+  });
 }
 
 export async function linkSocial(address: string, social: Social) {
