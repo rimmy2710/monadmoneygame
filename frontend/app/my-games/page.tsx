@@ -2,8 +2,20 @@
 
 import { useAccount } from "wagmi";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { fetchMe, fetchMyGames, GameSummary, MeProfile } from "../../lib/api";
 import MyGameCard from "../../components/MyGameCard";
+import Badge from "../../components/ui/Badge";
+import Button from "../../components/ui/Button";
+import Card from "../../components/ui/Card";
+import EmptyState from "../../components/ui/EmptyState";
+import ErrorState from "../../components/ui/ErrorState";
+import NetworkStatus from "../../components/ui/NetworkStatus";
+import RefreshIcon from "../../components/ui/RefreshIcon";
+import SectionTitle from "../../components/ui/SectionTitle";
+import SkeletonCard from "../../components/ui/SkeletonCard";
+import Spinner from "../../components/ui/Spinner";
+import { showError, showSuccess, showWarning } from "../../components/ui/Toaster";
+import useAutoRefresh from "../../hooks/useAutoRefresh";
+import { fetchMe, fetchMyGames, GameSummary, MeProfile } from "../../lib/api";
 
 type StatusFilter = "all" | "pending" | "playing" | "finalized";
 type SortBy = "recent" | "oldest" | "highestMedal";
@@ -32,9 +44,11 @@ export default function MyGamesPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [sortBy, setSortBy] = useState<SortBy>("recent");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
   useEffect(() => {
     if (wagmiAddress) {
@@ -42,41 +56,46 @@ export default function MyGamesPage() {
     }
   }, [wagmiAddress]);
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (options?: { silent?: boolean; background?: boolean }) => {
     const trimmed = address.trim();
     if (!trimmed) {
-      setError("Enter a wallet address to load your games.");
+      const message = "Enter a wallet address to load your games.";
+      setError(message);
+      if (!options?.background) {
+        showWarning(message);
+      }
       return;
     }
 
-    setLoading(true);
+    if (!options?.background) setLoading(true);
+    setRefreshing(true);
     setError(null);
     try {
       const [profileData, games] = await Promise.all([fetchMe(trimmed), fetchMyGames(trimmed)]);
       setProfile(profileData);
       setMyGames(games);
       setLastUpdated(new Date());
+      setHasLoadedOnce(true);
+      if (!options?.silent) {
+        showSuccess("Your games are up to date.");
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load your games");
+      const message = err instanceof Error ? err.message : "Failed to load your games";
+      setError(message);
+      showError(message);
     } finally {
-      setLoading(false);
+      if (!options?.background) setLoading(false);
+      setRefreshing(false);
     }
   }, [address]);
 
   useEffect(() => {
     if (wagmiAddress) {
-      loadData();
+      loadData({ silent: true });
     }
   }, [loadData, wagmiAddress]);
 
-  useEffect(() => {
-    if (!autoRefresh) return;
-    const id = setInterval(() => {
-      loadData();
-    }, 10000);
-
-    return () => clearInterval(id);
-  }, [autoRefresh, loadData]);
+  useAutoRefresh(loadData, 20000, autoRefresh);
 
   const displayedGames = useMemo(() => {
     let filtered = [...myGames];
@@ -103,32 +122,30 @@ export default function MyGamesPage() {
 
   return (
     <section className="space-y-6">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-2xl font-semibold">My Games</h2>
-          <p className="text-slate-300">View games you have joined or played with this wallet.</p>
-        </div>
-        <div className="flex items-center gap-3 text-sm text-slate-300">
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              className="h-4 w-4 rounded border-slate-700 bg-slate-900"
-              checked={autoRefresh}
-              onChange={(e) => setAutoRefresh(e.target.checked)}
-            />
-            Auto refresh (10s)
-          </label>
-          <button
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
-            onClick={loadData}
-            disabled={loading}
-          >
-            {loading ? "Refreshing..." : "Refresh"}
-          </button>
-        </div>
-      </div>
+      <SectionTitle
+        title="My Games"
+        description="View games you have joined or played with this wallet."
+        action={
+          <div className="flex flex-wrap items-center gap-3 text-sm text-slate-300">
+            <NetworkStatus />
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-white/20 bg-slate-900"
+                checked={autoRefresh}
+                onChange={(e) => setAutoRefresh(e.target.checked)}
+              />
+              Auto refresh (20s)
+            </label>
+            <Button onClick={loadData} disabled={loading || refreshing}>
+              <RefreshIcon spinning={refreshing || loading} />
+              {(loading || refreshing) && <Spinner />} Refresh
+            </Button>
+          </div>
+        }
+      />
 
-      <div className="rounded-xl border border-slate-800 p-4 shadow-sm space-y-3">
+      <Card className="space-y-3 p-4 sm:p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
           <label className="text-sm text-slate-300" htmlFor="address">
             Wallet address
@@ -138,28 +155,42 @@ export default function MyGamesPage() {
             value={address}
             onChange={(e) => setAddress(e.target.value)}
             placeholder="Enter wallet address"
-            className="flex-1 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring focus:ring-indigo-500"
+            className="flex-1 rounded-lg border border-white/10 bg-slate-900/60 px-3 py-2 text-sm text-slate-100 focus:border-indigo-400 focus:outline-none"
           />
-          <button
-            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
+          <Button
+            variant="secondary"
             onClick={loadData}
-            disabled={loading}
+            disabled={loading || refreshing}
+            className="min-w-[140px]"
           >
-            {loading ? "Loading..." : "Load my games"}
-          </button>
+            <RefreshIcon spinning={refreshing || loading} />
+            {(loading || refreshing) && <Spinner />} Load my games
+          </Button>
         </div>
-        {error && <p className="text-sm text-red-400">{error}</p>}
         {lastUpdated && <p className="text-sm text-slate-400">Last updated: {formatTime(lastUpdated)}</p>}
-      </div>
+      </Card>
+
+      {loading && myGames.length === 0 && (
+        <div className="grid gap-4 md:grid-cols-2">
+          <SkeletonCard lines={4} />
+          <SkeletonCard lines={4} />
+          <SkeletonCard lines={3} />
+          <SkeletonCard lines={5} />
+        </div>
+      )}
+
+      {error && myGames.length === 0 && <ErrorState message={error} onRetry={loadData} />}
+      {error && myGames.length > 0 && <ErrorState message={error} onRetry={loadData} />}
 
       {profile && (
         <div className="grid gap-4 md:grid-cols-2">
-          <div className="rounded-xl border border-slate-800 p-4 shadow-sm space-y-3">
+          <Card className="space-y-3 p-4 sm:p-6">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Profile</h3>
-              <span className="rounded-full bg-indigo-600 px-3 py-1 text-xs font-semibold uppercase text-white">
-                {profile.activityTier}
-              </span>
+              <div className="space-y-1">
+                <h3 className="text-xl font-semibold">Profile</h3>
+                <p className="text-sm text-slate-400">Performance overview</p>
+              </div>
+              <Badge variant="info">{profile.activityTier}</Badge>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <Stat label="Medals" value={profile.medals} />
@@ -167,14 +198,17 @@ export default function MyGamesPage() {
               <Stat label="Games won" value={profile.gamesWon} />
               <Stat label="Referred" value={profile.referredCount} />
             </div>
-          </div>
-          <div className="rounded-xl border border-slate-800 p-4 shadow-sm space-y-3">
-            <h3 className="text-lg font-semibold">Filters</h3>
+          </Card>
+          <Card className="space-y-3 p-4 sm:p-6">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-semibold">Filters</h3>
+              <Badge variant="default">Customize</Badge>
+            </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className="flex flex-col gap-1 text-sm text-slate-200">
                 Sort by
                 <select
-                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm"
+                  className="rounded-lg border border-white/10 bg-slate-900/60 px-3 py-2 text-sm"
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as SortBy)}
                 >
@@ -189,7 +223,7 @@ export default function MyGamesPage() {
               <label className="flex flex-col gap-1 text-sm text-slate-200">
                 Status
                 <select
-                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm"
+                  className="rounded-lg border border-white/10 bg-slate-900/60 px-3 py-2 text-sm"
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
                 >
@@ -201,10 +235,10 @@ export default function MyGamesPage() {
                 </select>
               </label>
             </div>
-            <div className="rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-300">
+            <div className="rounded-lg border border-white/5 bg-slate-900/60 px-3 py-2 text-sm text-slate-300">
               Estimated medals per game: <span className="font-semibold text-white">{estimatedMedals}</span>
             </div>
-          </div>
+          </Card>
         </div>
       )}
 
@@ -214,8 +248,16 @@ export default function MyGamesPage() {
         ))}
       </div>
 
-      {!loading && displayedGames.length === 0 && (
-        <p className="text-sm text-slate-400">No games found for this wallet yet.</p>
+      {!loading && displayedGames.length === 0 && hasLoadedOnce && (
+        <EmptyState
+          title="No games found"
+          description="You haven't joined any games with this wallet yet."
+          action={
+            <Button variant="secondary" onClick={loadData}>
+              Refresh
+            </Button>
+          }
+        />
       )}
     </section>
   );
@@ -223,7 +265,7 @@ export default function MyGamesPage() {
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-lg border border-slate-800 bg-slate-900 px-3 py-2">
+    <div className="rounded-lg border border-white/5 bg-slate-900/60 px-3 py-2">
       <p className="text-xs text-slate-400">{label}</p>
       <p className="text-lg font-semibold text-white">{value}</p>
     </div>

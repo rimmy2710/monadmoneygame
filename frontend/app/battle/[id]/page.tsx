@@ -7,6 +7,18 @@ import BattleLayout from "../../../components/BattleLayout";
 import Countdown from "../../../components/Countdown";
 import RoundResult from "../../../components/RoundResult";
 import RPSMoveButton from "../../../components/RPSMoveButton";
+import Badge from "../../../components/ui/Badge";
+import Button from "../../../components/ui/Button";
+import Card from "../../../components/ui/Card";
+import ErrorState from "../../../components/ui/ErrorState";
+import Divider from "../../../components/ui/Divider";
+import NetworkStatus from "../../../components/ui/NetworkStatus";
+import RefreshIcon from "../../../components/ui/RefreshIcon";
+import SectionTitle from "../../../components/ui/SectionTitle";
+import SkeletonCard from "../../../components/ui/SkeletonCard";
+import Spinner from "../../../components/ui/Spinner";
+import { showError, showSuccess, showWarning } from "../../../components/ui/Toaster";
+import useAutoRefresh from "../../../hooks/useAutoRefresh";
 import { commitMove, fetchGameDetail, GameDetail, revealMove } from "../../../lib/api";
 
 type Move = "rock" | "paper" | "scissors";
@@ -40,7 +52,8 @@ export default function BattlePage() {
   const [commitTimeLeft, setCommitTimeLeft] = useState(COMMIT_DURATION);
   const [revealTimeLeft, setRevealTimeLeft] = useState(REVEAL_DURATION);
   const [autoRefresh, setAutoRefresh] = useState(true);
-  const [loading, setLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [autoRevealed, setAutoRevealed] = useState(false);
@@ -75,9 +88,9 @@ export default function BattlePage() {
     []
   );
 
-  const loadGame = useCallback(async () => {
+  const loadGame = useCallback(async (options?: { silent?: boolean; background?: boolean }) => {
     if (!gameId) return;
-    setLoading(true);
+    if (!options?.background) setSyncing(true);
     setError(null);
     try {
       const data = await fetchGameDetail(gameId);
@@ -87,25 +100,24 @@ export default function BattlePage() {
       setOpponent(deriveOpponent(data, address));
       if (data.result) setRoundResult(data.result);
       setLastUpdated(new Date());
+      if (!options?.silent) {
+        showSuccess("Battle synced");
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load battle state");
+      const message = err instanceof Error ? err.message : "Failed to load battle state";
+      setError(message);
+      showError(message);
     } finally {
-      setLoading(false);
+      setSyncing(false);
     }
   }, [address, deriveOpponent, derivePhase, gameId]);
 
   useEffect(() => {
     if (!gameId) return;
-    void loadGame();
+    void loadGame({ silent: true });
   }, [gameId, loadGame]);
 
-  useEffect(() => {
-    if (!autoRefresh) return;
-    const id = setInterval(() => {
-      void loadGame();
-    }, 3000);
-    return () => clearInterval(id);
-  }, [autoRefresh, loadGame]);
+  useAutoRefresh(loadGame, 3000, autoRefresh);
 
   useEffect(() => {
     let interval: NodeJS.Timeout | undefined;
@@ -167,11 +179,15 @@ export default function BattlePage() {
 
   const handleCommit = useCallback(async () => {
     if (!address) {
-      setError("Connect a wallet or enter an address to commit.");
+      const message = "Connect a wallet or enter an address to commit.";
+      setError(message);
+      showWarning(message);
       return;
     }
     if (!playerMove) {
-      setError("Choose Rock, Paper, or Scissors first.");
+      const message = "Choose Rock, Paper, or Scissors first.";
+      setError(message);
+      showWarning(message);
       return;
     }
     const salt = commitSalt || randomSalt();
@@ -179,35 +195,49 @@ export default function BattlePage() {
 
     try {
       setError(null);
+      setActionLoading(true);
       const commitment = await generateCommitment(playerMove, salt);
       await commitMove(gameId, address, commitment);
       setPlayerCommit(commitment);
       setPhase("reveal");
+      showSuccess("Move committed. Reveal when ready.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to commit move");
+      const message = err instanceof Error ? err.message : "Failed to commit move";
+      setError(message);
+      showError(message);
     }
+    setActionLoading(false);
   }, [address, commitSalt, gameId, playerMove]);
 
   const handleReveal = useCallback(
     async (auto?: boolean) => {
       if (!address || !playerMove || !commitSalt) {
-        setError("Missing move or salt to reveal.");
+        const message = "Missing move or salt to reveal.";
+        setError(message);
+        showWarning(message);
         return;
       }
       try {
         setError(null);
+        setActionLoading(true);
         const response = await revealMove(gameId, address, playerMove, commitSalt);
         const nextResult =
           (response as { result?: "win" | "lose" | "draw" })?.result ?? roundResult ?? null;
         if (nextResult) setRoundResult(nextResult);
         setPhase("result");
-        await loadGame();
+        await loadGame({ silent: true });
         if (auto) {
           setAutoRevealed(true);
         }
+        showSuccess("Move revealed");
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to reveal move");
+        const message = err instanceof Error ? err.message : "Failed to reveal move";
+        setError(message);
+        if (!auto) {
+          showError(message);
+        }
       }
+      setActionLoading(false);
     },
     [address, commitSalt, gameId, loadGame, playerMove, roundResult]
   );
@@ -227,36 +257,41 @@ export default function BattlePage() {
 
   return (
     <BattleLayout game={game} lastUpdated={lastUpdated}>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap gap-3 text-sm text-slate-300">
-          <span className="rounded-full bg-indigo-900/40 px-3 py-1 font-semibold text-indigo-100">Phase: {phase}</span>
-          <span className="rounded-full bg-slate-900/60 px-3 py-1">Best of {totalRounds}</span>
-          {game?.playersCount % 2 === 1 && (
-            <span className="rounded-full bg-amber-900/50 px-3 py-1 text-amber-200">10% lucky auto-pass active</span>
-          )}
+      <SectionTitle
+        title={`Battle #${gameId || "-"}`}
+        description="Commit and reveal your moves to claim victory."
+        action={
+          <div className="flex flex-wrap items-center gap-3 text-sm text-slate-300">
+            <NetworkStatus pollMs={6000} />
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-white/20 bg-slate-900"
+                checked={autoRefresh}
+                onChange={(e) => setAutoRefresh(e.target.checked)}
+              />
+              Auto refresh (3s)
+            </label>
+            <Button variant="secondary" onClick={() => loadGame()} disabled={syncing}>
+              <RefreshIcon spinning={syncing} /> {syncing && <Spinner />} {syncing ? "Syncing..." : "Refresh"}
+            </Button>
+          </div>
+        }
+      />
+
+      {syncing && !game && (
+        <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
+          <SkeletonCard lines={5} />
+          <SkeletonCard lines={4} />
         </div>
-        <div className="flex items-center gap-3 text-sm text-slate-300">
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              className="h-4 w-4 rounded border-slate-700 bg-slate-900"
-              checked={autoRefresh}
-              onChange={(e) => setAutoRefresh(e.target.checked)}
-            />
-            Auto refresh (3s)
-          </label>
-          <button
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-indigo-500"
-            onClick={() => loadGame()}
-          >
-            {loading ? "Syncing..." : "Refresh"}
-          </button>
-        </div>
-      </div>
+      )}
+
+      {error && !game && <ErrorState message={error} onRetry={() => loadGame()} />}
+      {error && game && <ErrorState message={error} onRetry={() => loadGame()} />}
 
       <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
         <div className="space-y-4">
-          <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 shadow-sm">
+          <Card className="space-y-4 p-4 sm:p-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="space-y-1">
                 <p className="text-sm uppercase tracking-wide text-slate-400">You</p>
@@ -268,12 +303,19 @@ export default function BattlePage() {
                 <p className="text-xl font-semibold text-white">{opponent ? opponentShort : "Waiting for opponent"}</p>
               </div>
             </div>
-          </div>
+            <div className="flex flex-wrap gap-2 text-xs text-slate-400">
+              <Badge variant="info">Best of {totalRounds}</Badge>
+              {game?.playersCount % 2 === 1 && (
+                <Badge variant="warning">10% lucky auto-pass active</Badge>
+              )}
+              {game?.status && <Badge variant="secondary">{game.status}</Badge>}
+            </div>
+          </Card>
 
-          <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4 shadow-sm space-y-4">
+          <Card className="space-y-4 p-4 sm:p-6">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Round {roundNumber}</h3>
-              <span className="text-xs uppercase tracking-wide text-slate-400">{phase} phase</span>
+              <h3 className="text-xl font-semibold">Round {roundNumber}</h3>
+              <Badge variant="default" className="uppercase">{phase} phase</Badge>
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
               {(Object.keys(moveIcons) as Move[]).map((move) => (
@@ -289,61 +331,63 @@ export default function BattlePage() {
               ))}
             </div>
             <div className="flex flex-wrap gap-3 text-sm text-slate-300">
-              <button
-                className="rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-white shadow hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
+              <Button
+                variant="primary"
                 onClick={handleCommit}
-                disabled={phase !== "commit" || !!playerCommit || loading}
+                disabled={phase !== "commit" || !!playerCommit || syncing || actionLoading}
               >
-                {playerCommit ? "Committed" : "Commit Move"}
-              </button>
-              <button
-                className="rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white shadow hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+                {actionLoading && <Spinner />} {playerCommit ? "Committed" : "Commit Move"}
+              </Button>
+              <Button
+                variant="secondary"
                 onClick={() => void handleReveal()}
-                disabled={phase !== "reveal" || !playerCommit || !playerMove || loading}
+                disabled={phase !== "reveal" || !playerCommit || !playerMove || syncing || actionLoading}
               >
-                Reveal Move
-              </button>
+                {actionLoading && <Spinner />} Reveal Move
+              </Button>
               {playerMove && commitSalt && (
-                <span className="rounded-lg bg-slate-800 px-3 py-2 text-xs text-slate-300">
+                <Badge variant="soft" className="normal-case">
                   Salt: {commitSalt.slice(0, 6)}...{commitSalt.slice(-4)}
-                </span>
+                </Badge>
               )}
             </div>
             {phase === "reveal" && playerMove && (
               <p className="text-sm text-emerald-200">You chose {playerMove}. Reveal before timer ends.</p>
             )}
             {error && <p className="text-sm text-rose-400">{error}</p>}
-          </div>
+          </Card>
 
           {roundResult && <RoundResult result={roundResult} opponent={opponent ?? undefined} />}
 
           {isFinalChampion && (
-            <div className="rounded-xl border border-amber-500 bg-amber-900/40 p-5 text-center shadow-lg">
+            <Card className="border-amber-500 bg-amber-900/40 p-5 text-center shadow-lg">
               <div className="text-3xl">🏆 You are the Champion!</div>
               <div className="text-lg text-amber-100">+100 medals</div>
-              <button
-                className="mt-4 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-indigo-500"
-                onClick={() => router.push("/leaderboard")}
-              >
-                Go to Leaderboard
-              </button>
-            </div>
+              <Button className="mt-4" onClick={() => router.push("/leaderboard")}>Go to Leaderboard</Button>
+            </Card>
           )}
         </div>
 
         <div className="space-y-4">
-          <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4 shadow-sm space-y-3">
-            <h4 className="text-sm uppercase tracking-wide text-slate-400">Timers</h4>
+          <Card className="space-y-4 p-4 sm:p-6">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm uppercase tracking-wide text-slate-400">Timers</h4>
+              <Badge variant="default">Auto reveal</Badge>
+            </div>
             {phase === "commit" ? (
               <Countdown total={COMMIT_DURATION} remaining={commitTimeLeft} label="Commit" />
             ) : (
               <Countdown total={REVEAL_DURATION} remaining={revealTimeLeft} label="Reveal" />
             )}
             <p className="text-xs text-slate-400">Auto reveal triggers when the reveal timer ends.</p>
-          </div>
+          </Card>
 
-          <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4 shadow-sm space-y-2 text-sm text-slate-200">
-            <h4 className="text-sm font-semibold text-white">Tournament flow</h4>
+          <Card className="space-y-3 p-4 sm:p-6 text-sm text-slate-200">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-semibold text-white">Tournament flow</h4>
+              <Badge variant="secondary">Quick guide</Badge>
+            </div>
+            <Divider />
             <ul className="list-disc space-y-1 pl-4 text-slate-300">
               <li>Qualifiers: Best of 3 rounds.</li>
               <li>Finals: Best of 5 rounds.</li>
@@ -351,7 +395,7 @@ export default function BattlePage() {
               <li>Commit window: 15s, Reveal window: 15s.</li>
               <li>Rounds advance automatically after results.</li>
             </ul>
-          </div>
+          </Card>
         </div>
       </div>
     </BattleLayout>
