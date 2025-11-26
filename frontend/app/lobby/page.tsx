@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
@@ -11,7 +12,11 @@ import RefreshIcon from "../../components/ui/RefreshIcon";
 import SectionTitle from "../../components/ui/SectionTitle";
 import SkeletonList from "../../components/ui/SkeletonList";
 import Spinner from "../../components/ui/Spinner";
-import { showError, showSuccess } from "../../components/ui/Toaster";
+import {
+  showError,
+  showSuccess,
+  showWarning,
+} from "../../components/ui/Toaster";
 import useAutoRefresh from "../../hooks/useAutoRefresh";
 import { fetchGames, GameSummary } from "../../lib/api";
 
@@ -64,7 +69,7 @@ export default function LobbyPage() {
   useAutoRefresh(loadGames, 10000, autoRefresh);
 
   const handleJoin = (gameId: number) => {
-    window.alert(`Joining game ${gameId} (mock)`);
+    showWarning(`Joining game ${gameId} is simulated for this demo.`);
   };
 
   const formatTime = (date: Date) =>

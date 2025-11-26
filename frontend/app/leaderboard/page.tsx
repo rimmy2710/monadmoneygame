@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
@@ -151,10 +152,7 @@ export default function LeaderboardPage() {
               Auto refresh (30s)
             </label>
 
-            <Button
-              onClick={() => loadLeaderboard()}
-              disabled={loading || refreshing}
-            >
+            <Button onClick={() => loadLeaderboard()} disabled={loading || refreshing}>
               <RefreshIcon spinning={refreshing || loading} />
               {(loading || refreshing) && <Spinner />} Refresh
             </Button>

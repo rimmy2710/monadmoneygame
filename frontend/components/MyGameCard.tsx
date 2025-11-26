@@ -1,9 +1,13 @@
+import Card from "./ui/Card";
+import Badge from "./ui/Badge";
 import { GameSummary } from "../lib/api";
 
-const statusStyles: Record<string, string> = {
-  pending: "bg-blue-900 text-blue-100 border border-blue-700",
-  playing: "bg-emerald-900 text-emerald-100 border border-emerald-700",
-  finalized: "bg-slate-800 text-slate-200 border border-slate-700",
+type BadgeVariant = "default" | "info" | "success" | "warning" | "danger" | "secondary" | "soft";
+
+const statusVariants: Record<string, BadgeVariant> = {
+  pending: "info",
+  playing: "success",
+  finalized: "secondary",
 };
 
 const normalizeStatus = (status: string) => {
@@ -18,19 +22,15 @@ export function MyGameCard({ game, estimatedMedals }: { game: GameSummary; estim
   const statusLabel = normalizedStatus.charAt(0).toUpperCase() + normalizedStatus.slice(1);
 
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-slate-800 p-4 shadow-sm">
+    <Card className="flex flex-col gap-3 p-4 sm:p-6">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-3">
           <h3 className="text-lg font-semibold">Game #{game.id}</h3>
-          <span
-            className={`rounded-full px-3 py-1 text-xs font-semibold uppercase ${
-              statusStyles[normalizedStatus] ?? "bg-slate-800 text-slate-200 border border-slate-700"
-            }`}
-          >
-            {statusLabel}
-          </span>
+          <Badge variant={statusVariants[normalizedStatus] ?? "default"}>{statusLabel}</Badge>
         </div>
-        <span className="text-xs text-slate-400">Round {game.currentRound}</span>
+        <Badge variant="soft" className="text-[11px] uppercase">
+          Round {game.currentRound}
+        </Badge>
       </div>
 
       <div className="grid grid-cols-2 gap-3 text-sm text-slate-200 sm:grid-cols-4">
@@ -39,7 +39,7 @@ export function MyGameCard({ game, estimatedMedals }: { game: GameSummary; estim
         <InfoBlock label="Pool" value={`${game.pool} USDC`} />
         <InfoBlock label="Est. medals" value={estimatedMedals.toString()} />
       </div>
-    </div>
+    </Card>
   );
 }
 

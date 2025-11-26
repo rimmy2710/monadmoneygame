@@ -3,10 +3,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
+
 import BattleLayout from "../../../components/BattleLayout";
 import Countdown from "../../../components/Countdown";
 import RoundResult from "../../../components/RoundResult";
 import RPSMoveButton from "../../../components/RPSMoveButton";
+
 import Badge from "../../../components/ui/Badge";
 import Button from "../../../components/ui/Button";
 import Card from "../../../components/ui/Card";
@@ -17,6 +19,7 @@ import RefreshIcon from "../../../components/ui/RefreshIcon";
 import SectionTitle from "../../../components/ui/SectionTitle";
 import SkeletonCard from "../../../components/ui/SkeletonCard";
 import Spinner from "../../../components/ui/Spinner";
+
 import {
   showError,
   showSuccess,
@@ -31,7 +34,6 @@ import {
 } from "../../../lib/api";
 
 type Move = "rock" | "paper" | "scissors";
-
 type Phase = "commit" | "reveal" | "result";
 
 const COMMIT_DURATION = 15;
@@ -49,15 +51,16 @@ export default function BattlePage() {
   const { address: wagmiAddress } = useAccount();
 
   const gameId = useMemo(() => Number(params?.id ?? 0), [params]);
+
   const [address, setAddress] = useState("");
   const [game, setGame] = useState<GameDetail | null>(null);
   const [phase, setPhase] = useState<Phase>("commit");
   const [playerMove, setPlayerMove] = useState<Move | null>(null);
   const [playerCommit, setPlayerCommit] = useState<string | null>(null);
   const [commitSalt, setCommitSalt] = useState<string>("");
-  const [roundResult, setRoundResult] = useState<
-    "win" | "lose" | "draw" | null
-  >(null);
+  const [roundResult, setRoundResult] = useState<"win" | "lose" | "draw" | null>(
+    null
+  );
   const [roundNumber, setRoundNumber] = useState(1);
   const [opponent, setOpponent] = useState<string | null>(null);
   const [commitTimeLeft, setCommitTimeLeft] = useState(COMMIT_DURATION);
@@ -104,6 +107,7 @@ export default function BattlePage() {
       if (!gameId) return;
       if (!options?.background) setSyncing(true);
       setError(null);
+
       try {
         const data = await fetchGameDetail(gameId);
         setGame(data);
@@ -134,8 +138,10 @@ export default function BattlePage() {
 
   useAutoRefresh(loadGame, 3000, autoRefresh);
 
+  // Timers
   useEffect(() => {
     let interval: NodeJS.Timeout | undefined;
+
     if (phase === "commit") {
       setCommitTimeLeft(COMMIT_DURATION);
       interval = setInterval(() => {
@@ -154,11 +160,13 @@ export default function BattlePage() {
         setRevealTimeLeft((time) => Math.max(0, time - 1));
       }, 1000);
     }
+
     return () => {
       if (interval) clearInterval(interval);
     };
   }, [phase, roundNumber]);
 
+  // Auto reveal
   useEffect(() => {
     if (
       phase === "reveal" &&
@@ -172,11 +180,9 @@ export default function BattlePage() {
     }
   }, [autoRevealed, handleReveal, phase, playerCommit, playerMove, revealTimeLeft]);
 
+  // Detect round change from backend
   useEffect(() => {
-    if (
-      game &&
-      (game.round ?? game.currentRound ?? 1) !== roundNumber
-    ) {
+    if (game && (game.round ?? game.currentRound ?? 1) !== roundNumber) {
       const nextRound = game.round ?? game.currentRound ?? 1;
       setRoundNumber(nextRound);
       setPhase(derivePhase(game));
@@ -187,6 +193,7 @@ export default function BattlePage() {
     }
   }, [derivePhase, game, roundNumber]);
 
+  // Reset to next round if not finished
   useEffect(() => {
     if (phase === "result" && (!game || game.status !== "Finished")) {
       const timeout = setTimeout(() => {
@@ -214,6 +221,7 @@ export default function BattlePage() {
       showWarning(message);
       return;
     }
+
     const salt = commitSalt || randomSalt();
     setCommitSalt(salt);
 
@@ -242,15 +250,11 @@ export default function BattlePage() {
         showWarning(message);
         return;
       }
+
       try {
         setError(null);
         setActionLoading(true);
-        const response = await revealMove(
-          gameId,
-          address,
-          playerMove,
-          commitSalt
-        );
+        const response = await revealMove(gameId, address, playerMove, commitSalt);
         const nextResult =
           (response as { result?: "win" | "lose" | "draw" })?.result ??
           roundResult ??
@@ -333,8 +337,12 @@ export default function BattlePage() {
         </div>
       )}
 
-      {error && !game && <ErrorState message={error} onRetry={() => loadGame()} />}
-      {error && game && <ErrorState message={error} onRetry={() => loadGame()} />}
+      {error && !game && (
+        <ErrorState message={error} onRetry={() => loadGame()} />
+      )}
+      {error && game && (
+        <ErrorState message={error} onRetry={() => loadGame()} />
+      )}
 
       <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
         <div className="space-y-4">
@@ -502,12 +510,14 @@ export default function BattlePage() {
 async function generateCommitment(move: Move, salt: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(`${move}:${salt}`);
+
   if (typeof crypto !== "undefined" && crypto.subtle) {
     const digest = await crypto.subtle.digest("SHA-256", data);
     return Array.from(new Uint8Array(digest))
       .map((b) => b.toString(16).padStart(2, "0"))
       .join("");
   }
+
   let hash = 0;
   for (let i = 0; i < data.length; i += 1) {
     hash = (hash << 5) - hash + data[i];

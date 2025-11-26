@@ -2,6 +2,7 @@
 
 import { useAccount } from "wagmi";
 import { useCallback, useEffect, useMemo, useState } from "react";
+
 import MyGameCard from "../../components/MyGameCard";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
@@ -55,8 +56,7 @@ export default function MyGamesPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [sortBy, setSortBy] = useState<SortBy>("recent");
-  const [statusFilter, setStatusFilter] =
-    useState<StatusFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
   useEffect(() => {
@@ -94,9 +94,7 @@ export default function MyGamesPage() {
         }
       } catch (err) {
         const message =
-          err instanceof Error
-            ? err.message
-            : "Failed to load your games";
+          err instanceof Error ? err.message : "Failed to load your games";
         setError(message);
         showError(message);
       } finally {
@@ -160,10 +158,7 @@ export default function MyGamesPage() {
               />
               Auto refresh (20s)
             </label>
-            <Button
-              onClick={() => loadData()}
-              disabled={loading || refreshing}
-            >
+            <Button onClick={loadData} disabled={loading || refreshing}>
               <RefreshIcon spinning={refreshing || loading} />
               {(loading || refreshing) && <Spinner />} Refresh
             </Button>
@@ -173,10 +168,7 @@ export default function MyGamesPage() {
 
       <Card className="space-y-3 p-4 sm:p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-          <label
-            className="text-sm text-slate-300"
-            htmlFor="address"
-          >
+          <label className="text-sm text-slate-300" htmlFor="address">
             Wallet address
           </label>
           <input
@@ -188,7 +180,7 @@ export default function MyGamesPage() {
           />
           <Button
             variant="secondary"
-            onClick={() => loadData()}
+            onClick={loadData}
             disabled={loading || refreshing}
             className="min-w-[140px]"
           >
@@ -225,9 +217,7 @@ export default function MyGamesPage() {
             <div className="flex items-center justify-between">
               <div className="space-y-1">
                 <h3 className="text-xl font-semibold">Profile</h3>
-                <p className="text-sm text-slate-400">
-                  Performance overview
-                </p>
+                <p className="text-sm text-slate-400">Performance overview</p>
               </div>
               <Badge variant="info">{profile.activityTier}</Badge>
             </div>
@@ -249,17 +239,13 @@ export default function MyGamesPage() {
                 <select
                   className="rounded-lg border border-white/10 bg-slate-900/60 px-3 py-2 text-sm"
                   value={sortBy}
-                  onChange={(e) =>
-                    setSortBy(e.target.value as SortBy)
-                  }
+                  onChange={(e) => setSortBy(e.target.value as SortBy)}
                 >
-                  {Object.entries(sortLabels).map(
-                    ([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    )
-                  )}
+                  {Object.entries(sortLabels).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
                 </select>
               </label>
 
@@ -307,7 +293,7 @@ export default function MyGamesPage() {
           title="No games found"
           description="You haven't joined any games with this wallet yet."
           action={
-            <Button variant="secondary" onClick={() => loadData()}>
+            <Button variant="secondary" onClick={loadData}>
               Refresh
             </Button>
           }
