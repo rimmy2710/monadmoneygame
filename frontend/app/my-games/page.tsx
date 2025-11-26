@@ -2,6 +2,7 @@
 
 import { useAccount } from "wagmi";
 import { useCallback, useEffect, useMemo, useState } from "react";
+
 import MyGameCard from "../../components/MyGameCard";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
@@ -13,7 +14,11 @@ import RefreshIcon from "../../components/ui/RefreshIcon";
 import SectionTitle from "../../components/ui/SectionTitle";
 import SkeletonCard from "../../components/ui/SkeletonCard";
 import Spinner from "../../components/ui/Spinner";
-import { showError, showSuccess, showWarning } from "../../components/ui/Toaster";
+import {
+  showError,
+  showSuccess,
+  showWarning,
+} from "../../components/ui/Toaster";
 import useAutoRefresh from "../../hooks/useAutoRefresh";
 import { fetchMe, fetchMyGames, GameSummary, MeProfile } from "../../lib/api";
 
@@ -34,7 +39,11 @@ const sortLabels: Record<SortBy, string> = {
 };
 
 const formatTime = (date: Date) =>
-  date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  date.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
 
 export default function MyGamesPage() {
   const { address: wagmiAddress } = useAccount();
@@ -56,38 +65,45 @@ export default function MyGamesPage() {
     }
   }, [wagmiAddress]);
 
-  const loadData = useCallback(async (options?: { silent?: boolean; background?: boolean }) => {
-    const trimmed = address.trim();
-    if (!trimmed) {
-      const message = "Enter a wallet address to load your games.";
-      setError(message);
-      if (!options?.background) {
-        showWarning(message);
+  const loadData = useCallback(
+    async (options?: { silent?: boolean; background?: boolean }) => {
+      const trimmed = address.trim();
+      if (!trimmed) {
+        const message = "Enter a wallet address to load your games.";
+        setError(message);
+        if (!options?.background) {
+          showWarning(message);
+        }
+        return;
       }
-      return;
-    }
 
-    if (!options?.background) setLoading(true);
-    setRefreshing(true);
-    setError(null);
-    try {
-      const [profileData, games] = await Promise.all([fetchMe(trimmed), fetchMyGames(trimmed)]);
-      setProfile(profileData);
-      setMyGames(games);
-      setLastUpdated(new Date());
-      setHasLoadedOnce(true);
-      if (!options?.silent) {
-        showSuccess("Your games are up to date.");
+      if (!options?.background) setLoading(true);
+      setRefreshing(true);
+      setError(null);
+      try {
+        const [profileData, games] = await Promise.all([
+          fetchMe(trimmed),
+          fetchMyGames(trimmed),
+        ]);
+        setProfile(profileData);
+        setMyGames(games);
+        setLastUpdated(new Date());
+        setHasLoadedOnce(true);
+        if (!options?.silent) {
+          showSuccess("Your games are up to date.");
+        }
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Failed to load your games";
+        setError(message);
+        showError(message);
+      } finally {
+        if (!options?.background) setLoading(false);
+        setRefreshing(false);
       }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to load your games";
-      setError(message);
-      showError(message);
-    } finally {
-      if (!options?.background) setLoading(false);
-      setRefreshing(false);
-    }
-  }, [address]);
+    },
+    [address]
+  );
 
   useEffect(() => {
     if (wagmiAddress) {
@@ -105,7 +121,9 @@ export default function MyGamesPage() {
     } else if (statusFilter === "playing") {
       filtered = filtered.filter((game) => game.status === "Ongoing");
     } else if (statusFilter === "finalized") {
-      filtered = filtered.filter((game) => ["Finished", "Cancelled"].includes(game.status));
+      filtered = filtered.filter((game) =>
+        ["Finished", "Cancelled"].includes(game.status)
+      );
     }
 
     return filtered.sort((a, b) => {
@@ -118,7 +136,10 @@ export default function MyGamesPage() {
     });
   }, [myGames, sortBy, statusFilter]);
 
-  const estimatedMedals = profile && profile.gamesPlayed > 0 ? Math.round(profile.medals / profile.gamesPlayed) : 0;
+  const estimatedMedals =
+    profile && profile.gamesPlayed > 0
+      ? Math.round(profile.medals / profile.gamesPlayed)
+      : 0;
 
   return (
     <section className="space-y-6">
@@ -167,7 +188,11 @@ export default function MyGamesPage() {
             {(loading || refreshing) && <Spinner />} Load my games
           </Button>
         </div>
-        {lastUpdated && <p className="text-sm text-slate-400">Last updated: {formatTime(lastUpdated)}</p>}
+        {lastUpdated && (
+          <p className="text-sm text-slate-400">
+            Last updated: {formatTime(lastUpdated)}
+          </p>
+        )}
       </Card>
 
       {loading && myGames.length === 0 && (
@@ -179,8 +204,12 @@ export default function MyGamesPage() {
         </div>
       )}
 
-      {error && myGames.length === 0 && <ErrorState message={error} onRetry={loadData} />}
-      {error && myGames.length > 0 && <ErrorState message={error} onRetry={loadData} />}
+      {error && myGames.length === 0 && (
+        <ErrorState message={error} onRetry={loadData} />
+      )}
+      {error && myGames.length > 0 && (
+        <ErrorState message={error} onRetry={loadData} />
+      )}
 
       {profile && (
         <div className="grid gap-4 md:grid-cols-2">
@@ -225,18 +254,25 @@ export default function MyGamesPage() {
                 <select
                   className="rounded-lg border border-white/10 bg-slate-900/60 px-3 py-2 text-sm"
                   value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+                  onChange={(e) =>
+                    setStatusFilter(e.target.value as StatusFilter)
+                  }
                 >
-                  {Object.entries(statusFilterLabels).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
+                  {Object.entries(statusFilterLabels).map(
+                    ([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    )
+                  )}
                 </select>
               </label>
             </div>
             <div className="rounded-lg border border-white/5 bg-slate-900/60 px-3 py-2 text-sm text-slate-300">
-              Estimated medals per game: <span className="font-semibold text-white">{estimatedMedals}</span>
+              Estimated medals per game:{" "}
+              <span className="font-semibold text-white">
+                {estimatedMedals}
+              </span>
             </div>
           </Card>
         </div>
@@ -244,7 +280,11 @@ export default function MyGamesPage() {
 
       <div className="space-y-3">
         {displayedGames.map((game) => (
-          <MyGameCard key={game.id} game={game} estimatedMedals={estimatedMedals} />
+          <MyGameCard
+            key={game.id}
+            game={game}
+            estimatedMedals={estimatedMedals}
+          />
         ))}
       </div>
 
