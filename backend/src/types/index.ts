@@ -22,6 +22,8 @@ export interface GameDetail extends GameSummary {
   players: PlayerSnapshot[];
 }
 
+export type ActivityTier = "Bronze" | "Silver" | "Gold" | "Platinum" | "Unknown";
+
 export interface LeaderboardEntry {
   address: string;
   medals: number;
@@ -34,12 +36,12 @@ export interface MeProfile {
   medals: number;
   gamesPlayed: number;
   gamesWon: number;
-  activityTier: "Bronze" | "Silver" | "Gold" | "Platinum";
+  activityTier: ActivityTier;
   linkedSocials: {
     gmail: boolean;
     x: boolean;
     discord: boolean;
   };
-  referralCode: string;
+  referralCode: string | null;
   referredCount: number;
 }

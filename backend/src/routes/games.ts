@@ -1,5 +1,6 @@
 import { FastifyInstance } from "fastify";
-import { GameDetail, GameSummary, PlayerSnapshot } from "../types";
+import { getMasterMindContract, formatUsdc } from "../lib/monad";
+import { GameDetail, GameStatus, GameSummary, PlayerSnapshot } from "../types";
 
 const mockGames: GameSummary[] = [
   {
@@ -37,19 +38,92 @@ const mockPlayers: PlayerSnapshot[] = [
   { address: "0x3333333333333333333333333333333333333333", isActive: false, currentRound: 1 },
 ];
 
-export default async function gamesRoutes(fastify: FastifyInstance) {
-  fastify.get("/games", async () => mockGames);
+function mapStatus(status: number): GameStatus {
+  switch (status) {
+    case 0:
+      return "Pending";
+    case 1:
+      return "Ongoing";
+    case 2:
+      return "Finished";
+    case 3:
+      return "Cancelled";
+    default:
+      return "Pending";
+  }
+}
 
-  fastify.get("/games/:id", async (request) => {
+function mapGameSummary(id: number, raw: any): GameSummary {
+  return {
+    id,
+    status: mapStatus(Number(raw.status ?? raw[3] ?? 0)),
+    maxPlayers: Number(raw.maxPlayers ?? raw[2] ?? 0),
+    playersCount: Number(raw.playersCount ?? raw[5] ?? 0),
+    entryFee: formatUsdc(raw.entryFee ?? raw[1] ?? 0n),
+    pool: formatUsdc(raw.pool ?? raw[6] ?? 0n),
+    currentRound: Number(raw.currentRound ?? raw[4] ?? 0),
+  };
+}
+
+export default async function gamesRoutes(fastify: FastifyInstance) {
+  fastify.get("/games", async (_, reply) => {
+    const mm = getMasterMindContract();
+    if (!mm) return mockGames;
+
+    try {
+      const nextGameId = await mm.contract.nextGameId();
+      const latest = Number(nextGameId);
+      const startId = Math.max(0, latest - 3);
+      const summaries: GameSummary[] = [];
+
+      for (let id = startId; id < latest; id++) {
+        const rawGame = await mm.contract.games(id);
+        summaries.push(mapGameSummary(id, rawGame));
+      }
+
+      return summaries;
+    } catch (err) {
+      fastify.log.error({ err }, "failed to fetch games from chain");
+      return mockGames;
+    }
+  });
+
+  fastify.get("/games/:id", async (request, reply) => {
     const { id } = request.params as { id: string };
     const gameId = Number(id);
-    const summary = mockGames.find((g) => g.id === gameId) ?? mockGames[0];
-    const detail: GameDetail = {
-      ...summary,
-      createdAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
-      updatedAt: new Date().toISOString(),
-      players: mockPlayers,
-    };
-    return detail;
+    const mm = getMasterMindContract();
+
+    if (!mm) {
+      const summary = mockGames.find((g) => g.id === gameId) ?? mockGames[0];
+      const detail: GameDetail = {
+        ...summary,
+        createdAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+        updatedAt: new Date().toISOString(),
+        players: mockPlayers,
+      };
+      return detail;
+    }
+
+    try {
+      const rawGame = await mm.contract.games(gameId);
+      const summary = mapGameSummary(gameId, rawGame);
+      const detail: GameDetail = {
+        ...summary,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        players: [],
+      };
+      return detail;
+    } catch (err) {
+      fastify.log.error({ err }, "failed to fetch game detail from chain");
+      const summary = mockGames.find((g) => g.id === gameId) ?? mockGames[0];
+      const detail: GameDetail = {
+        ...summary,
+        createdAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+        updatedAt: new Date().toISOString(),
+        players: mockPlayers,
+      };
+      return detail;
+    }
   });
 }
