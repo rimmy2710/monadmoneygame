@@ -1,6 +1,7 @@
 import "../styles/globals.css";
 import { ReactNode } from "react";
 import Providers from "../components/providers";
+import Toaster from "../components/ui/Toaster";
 
 export const metadata = {
   title: "Monad Master Mind",
@@ -27,6 +28,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             </header>
             <main className="space-y-8">{children}</main>
           </div>
+          <Toaster />
         </Providers>
       </body>
     </html>

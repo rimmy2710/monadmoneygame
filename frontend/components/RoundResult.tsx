@@ -19,7 +19,7 @@ export default function RoundResult({ result, opponent }: RoundResultProps) {
 
   return (
     <div
-      className={`flex flex-col gap-2 rounded-xl border px-4 py-3 text-center text-lg font-semibold shadow-sm transition ${color}`}
+      className={`flex flex-col gap-2 rounded-xl border px-4 py-3 text-center text-lg font-semibold shadow-sm transition animate-pop ${color}`}
     >
       <div className="text-2xl">{result === "win" ? "🏅" : result === "lose" ? "💀" : "⚔️"}</div>
       <div>{labels[result]}</div>
