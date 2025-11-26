@@ -23,9 +23,9 @@ export interface GameDetail extends GameSummary {
 
 export interface MeProfile {
   address: string;
-  medals: number;
-  medalsPending: number;
-  medalsOnChain: number;
+  medals: number;          // total = on-chain + pending
+  medalsPending: number;   // off-chain pending medals
+  medalsOnChain: number;   // value read from contract
   gamesPlayed: number;
   gamesWon: number;
   activityTier: string;
@@ -53,3 +53,4 @@ export interface ReferralUseResult {
   referrerPendingMedals?: number;
   newUserPendingMedals?: number;
 }
+
