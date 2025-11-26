@@ -1,2 +1,3 @@
 # monadmoneygame
 Gamemonad
+monadmainet
