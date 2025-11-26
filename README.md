@@ -1,23 +1,3 @@
-# Monad Master Mind
-
-## Overview
-Master Mind – on-chain rock-paper-scissors money game on Monad, combining a backend API, a frontend app, and a Solidity smart contract.
-
-## Tech stack
-- **Monad (EVM-compatible)** with a Solidity Master Mind contract.
-- **Backend:** Node.js, Fastify, ethers.
-- **Frontend:** Next.js, React, wagmi, TailwindCSS (or similar styling utilities).
-
-## Project structure
-- `backend/` – API server that connects to the Master Mind contract on Monad.
-- `frontend/` – Next.js app that provides the lobby, battle, profile, and leaderboard experiences.
-- `contracts/` – Solidity Master Mind smart contract (if present in the repository).
-
-## Prerequisites
-- Node.js (LTS) with npm or pnpm.
-- Access to a Monad RPC endpoint (testnet or mainnet).
-- A deployed Master Mind contract address on the same network.
-
 ## Environment variables
 
 ### Backend
@@ -33,6 +13,7 @@ Master Mind – on-chain rock-paper-scissors money game on Monad, combining a ba
 - `NEXT_PUBLIC_MONAD_RPC_URL` – optional alias for the RPC URL used in the current frontend code.
 
 ## How to run locally
+
 1. Clone the repository.
 2. Install dependencies in both `backend/` and `frontend/` (e.g. `npm install` or `pnpm install`).
 3. Copy the provided `.env.example` files to real `.env` / `.env.local` files and fill in real values for your Monad RPC URL and Master Mind contract address.
