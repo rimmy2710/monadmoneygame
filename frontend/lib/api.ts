@@ -1,6 +1,11 @@
-const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:4000";
+const API_BASE =
+  process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:4000";
 
 type Social = "gmail" | "x" | "discord";
+
+/* ===========================
+   Types
+   =========================== */
 
 export interface GameSummary {
   id: number;
@@ -10,7 +15,13 @@ export interface GameSummary {
   entryFee: string;
   pool: string;
   currentRound: number;
-  players?: string[]; // <- giữ lại từ Codex
+  players?: string[]; // giữ từ 4.4 -> dùng cho trang My Games
+}
+
+export interface GameDetail extends GameSummary {
+  phase?: "commit" | "reveal" | "result";
+  round?: number;
+  result?: "win" | "lose" | "draw";
 }
 
 export interface LeaderboardEntry {
@@ -36,7 +47,14 @@ export interface MeProfile {
   referredCount: number;
 }
 
-async function handleResponse<T>(res: Response, errorMessage: string): Promise<T> {
+/* ===========================
+   Helpers
+   =========================== */
+
+async function handleResponse<T>(
+  res: Response,
+  errorMessage: string
+): Promise<T> {
   if (!res.ok) {
     const message = await res.text();
     throw new Error(message || errorMessage);
@@ -44,24 +62,80 @@ async function handleResponse<T>(res: Response, errorMessage: string): Promise<T
   return res.json();
 }
 
+/* ===========================
+   Profile
+   =========================== */
+
 export async function fetchMe(address: string): Promise<MeProfile> {
-  const res = await fetch(`${API_BASE}/me?address=${encodeURIComponent(address)}`);
+  const res = await fetch(
+    `${API_BASE}/me?address=${encodeURIComponent(address)}`
+  );
   return handleResponse<MeProfile>(res, "Failed to load profile");
 }
+
+/* ===========================
+   Games
+   =========================== */
 
 export async function fetchGames(): Promise<GameSummary[]> {
   const res = await fetch(`${API_BASE}/games`);
   return handleResponse<GameSummary[]>(res, "Failed to load games");
 }
 
+export async function fetchGameDetail(id: number): Promise<GameDetail> {
+  const res = await fetch(`${API_BASE}/games/${id}`);
+  return handleResponse<GameDetail>(res, "Failed to load game");
+}
+
+/* Commit-Reveal (Battle flow) */
+
+export async function commitMove(
+  gameId: number,
+  address: string,
+  commitment: string
+) {
+  const res = await fetch(`${API_BASE}/games/commit`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ gameId, address, commitment }),
+  });
+  return handleResponse(res, "Failed to commit move");
+}
+
+export async function revealMove(
+  gameId: number,
+  address: string,
+  move: string,
+  salt: string
+) {
+  const res = await fetch(`${API_BASE}/games/reveal`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ gameId, address, move, salt }),
+  });
+  return handleResponse(res, "Failed to reveal move");
+}
+
+/* ===========================
+   Leaderboard
+   =========================== */
+
 export async function fetchLeaderboard(
   sortBy: string = "medals",
   limit: number = 50
 ): Promise<LeaderboardEntry[]> {
-  const params = new URLSearchParams({ sortBy, limit: String(limit) });
+  const params = new URLSearchParams({
+    sortBy,
+    limit: String(limit),
+  });
+
   const res = await fetch(`${API_BASE}/leaderboard?${params.toString()}`);
   return handleResponse<LeaderboardEntry[]>(res, "Failed to load leaderboard");
 }
+
+/* ===========================
+   My Games (wallet filtered)
+   =========================== */
 
 export async function fetchMyGames(address: string): Promise<GameSummary[]> {
   const games = await fetchGames();
@@ -74,6 +148,10 @@ export async function fetchMyGames(address: string): Promise<GameSummary[]> {
     return players.some((player) => player.toLowerCase() === normalized);
   });
 }
+
+/* ===========================
+   Social linking
+   =========================== */
 
 export async function linkSocial(address: string, social: Social) {
   const res = await fetch(`${API_BASE}/social/link`, {
@@ -93,6 +171,10 @@ export async function unlinkSocial(address: string, social: Social) {
   return handleResponse(res, "Failed to unlink social");
 }
 
+/* ===========================
+   Referral system
+   =========================== */
+
 export async function createReferral(address: string) {
   const res = await fetch(`${API_BASE}/referral/create`, {
     method: "POST",
@@ -110,6 +192,10 @@ export async function useReferral(referralCode: string, address: string) {
   });
   return handleResponse(res, "Failed to use referral");
 }
+
+/* ===========================
+   Medal claiming
+   =========================== */
 
 export async function claimPendingMedals(address: string) {
   const res = await fetch(`${API_BASE}/rewards/claim-medals`, {
