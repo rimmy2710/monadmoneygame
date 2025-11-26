@@ -5,6 +5,9 @@ import gamesRoutes from "./routes/games";
 import healthRoutes from "./routes/health";
 import leaderboardRoutes from "./routes/leaderboard";
 import meRoutes from "./routes/me";
+import referralRoutes from "./routes/referral";
+import rewardsRoutes from "./routes/rewards";
+import socialRoutes from "./routes/social";
 
 const server = Fastify({ logger: true });
 
@@ -17,6 +20,9 @@ server.register(healthRoutes);
 server.register(gamesRoutes);
 server.register(leaderboardRoutes);
 server.register(meRoutes);
+server.register(referralRoutes, { prefix: "/referral" });
+server.register(rewardsRoutes, { prefix: "/rewards" });
+server.register(socialRoutes, { prefix: "/social" });
 
 const start = async () => {
   try {
