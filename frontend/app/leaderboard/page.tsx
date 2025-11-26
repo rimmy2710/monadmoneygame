@@ -1,6 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Badge from "../../components/ui/Badge";
+import Button from "../../components/ui/Button";
+import Card from "../../components/ui/Card";
+import SectionTitle from "../../components/ui/SectionTitle";
+import Spinner from "../../components/ui/Spinner";
 import { fetchLeaderboard, LeaderboardEntry } from "../../lib/api";
 
 const sortOptions = [
@@ -11,26 +16,28 @@ const sortOptions = [
 
 const limits = [10, 25, 50, 100];
 
-const tierColors: Record<string, string> = {
-  Bronze: "bg-amber-900 text-amber-100 border border-amber-700",
-  Silver: "bg-slate-600 text-white border border-slate-400",
-  Gold: "bg-yellow-600 text-black border border-yellow-300",
-  Platinum: "bg-sky-600 text-white border border-sky-300",
-  Diamond: "bg-indigo-700 text-indigo-50 border border-indigo-300",
+type BadgeVariantKey = "default" | "info" | "success" | "warning" | "danger";
+
+const tierColors: Record<string, BadgeVariantKey> = {
+  Bronze: "warning",
+  Silver: "default",
+  Gold: "success",
+  Platinum: "info",
+  Diamond: "info",
 };
 
 const rankBorder = (rank: number) => {
   if (rank === 1) return "border-yellow-400 shadow-lg shadow-yellow-900/40";
   if (rank === 2) return "border-slate-300 shadow-md shadow-slate-900/40";
   if (rank === 3) return "border-amber-500 shadow-md shadow-amber-900/40";
-  return "border-slate-800";
+  return "border-white/10";
 };
 
 const shortAddress = (address: string) =>
   address.length <= 10 ? address : `${address.slice(0, 6)}...${address.slice(-4)}`;
 
-const socialBadge = (label: string, color: string) => (
-  <span className={`rounded-full px-2 py-1 text-[11px] font-semibold ${color}`}>{label}</span>
+const socialBadge = (label: string, variant: BadgeVariantKey) => (
+  <Badge variant={variant} className="text-[11px]">{label}</Badge>
 );
 
 const formatTime = (date: Date) =>
@@ -74,61 +81,57 @@ export default function LeaderboardPage() {
 
   return (
     <section className="space-y-6">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h2 className="text-2xl font-semibold">Master Mind Leaderboard</h2>
-          <p className="text-slate-300">Top players ranked by medals, wins, or referrals.</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <label className="flex items-center gap-2 text-sm text-slate-200">
-            Sort by
-            <select
-              className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm"
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-            >
-              {sortOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
+      <SectionTitle
+        title="Master Mind Leaderboard"
+        description="Top players ranked by medals, wins, or referrals."
+        action={
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-2 text-sm text-slate-200">
+              Sort by
+              <select
+                className="rounded-lg border border-white/10 bg-slate-900/60 px-3 py-2 text-sm"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+              >
+                {sortOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-          <label className="flex items-center gap-2 text-sm text-slate-200">
-            Limit
-            <select
-              className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm"
-              value={limit}
-              onChange={(e) => setLimit(Number(e.target.value))}
-            >
-              {limits.map((count) => (
-                <option key={count} value={count}>
-                  {count}
-                </option>
-              ))}
-            </select>
-          </label>
+            <label className="flex items-center gap-2 text-sm text-slate-200">
+              Limit
+              <select
+                className="rounded-lg border border-white/10 bg-slate-900/60 px-3 py-2 text-sm"
+                value={limit}
+                onChange={(e) => setLimit(Number(e.target.value))}
+              >
+                {limits.map((count) => (
+                  <option key={count} value={count}>
+                    {count}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-          <label className="flex items-center gap-2 text-sm text-slate-200">
-            <input
-              type="checkbox"
-              className="h-4 w-4 rounded border-slate-700 bg-slate-900"
-              checked={autoRefresh}
-              onChange={(e) => setAutoRefresh(e.target.checked)}
-            />
-            Auto refresh (10s)
-          </label>
+            <label className="flex items-center gap-2 text-sm text-slate-200">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-white/20 bg-slate-900"
+                checked={autoRefresh}
+                onChange={(e) => setAutoRefresh(e.target.checked)}
+              />
+              Auto refresh (10s)
+            </label>
 
-          <button
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
-            onClick={loadLeaderboard}
-            disabled={loading}
-          >
-            {loading ? "Refreshing..." : "Refresh"}
-          </button>
-        </div>
-      </div>
+            <Button onClick={loadLeaderboard} disabled={loading}>
+              {loading && <Spinner />} Refresh
+            </Button>
+          </div>
+        }
+      />
 
       {lastUpdated && (
         <p className="text-sm text-slate-400">Last updated: {formatTime(lastUpdated)}</p>
@@ -138,39 +141,36 @@ export default function LeaderboardPage() {
       <div className="flex flex-col gap-3">
         {entries.map((player, index) => {
           const borderClass = rankBorder(index + 1);
-          const tierClass = tierColors[player.activityTier] ?? "bg-slate-800 text-slate-200 border border-slate-700";
+          const tierVariant = tierColors[player.activityTier] ?? "default";
           return (
-            <div
+            <Card
               key={player.address}
-              className={`flex items-center gap-4 rounded-xl border p-4 shadow-sm ${borderClass}`}
+              className={`flex flex-col gap-4 border ${borderClass} p-4 sm:flex-row sm:items-center sm:gap-6 sm:p-6`}
             >
-              <div className="flex items-center gap-3">
+              <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-600 text-lg font-bold text-white">
                   {player.address.slice(0, 2)}
                 </div>
-                <div>
-                  <div className="flex items-center gap-2 text-lg font-semibold">
-                    <span>#{index + 1}</span>
+                <div className="space-y-1">
+                  <div className="flex flex-wrap items-center gap-2 text-lg font-semibold">
+                    <span className="text-slate-300">#{index + 1}</span>
                     <span>{shortAddress(player.address)}</span>
-                    <span className={`rounded-full px-2 py-1 text-xs font-bold uppercase ${tierClass}`}>
-                      {player.activityTier}
-                    </span>
+                    <Badge variant={tierVariant}>{player.activityTier}</Badge>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
-                    {player.linkedSocials.gmail && socialBadge("Gmail", "bg-red-500/20 text-red-200 border border-red-500/50")}
-                    {player.linkedSocials.x && socialBadge("X", "bg-slate-200/10 text-slate-100 border border-slate-500/50")}
-                    {player.linkedSocials.discord &&
-                      socialBadge("Discord", "bg-indigo-500/20 text-indigo-100 border border-indigo-500/50")}
+                    {player.linkedSocials.gmail && socialBadge("Gmail", "warning")}
+                    {player.linkedSocials.x && socialBadge("X", "default")}
+                    {player.linkedSocials.discord && socialBadge("Discord", "info")}
                   </div>
                 </div>
               </div>
 
-              <div className="ml-auto flex gap-6 text-right text-sm md:text-base">
+              <div className="flex flex-1 flex-wrap items-center justify-end gap-6 text-right text-sm sm:text-base">
                 <StatBlock label="Medals" value={player.medals} />
                 <StatBlock label="Wins" value={player.gamesWon} subLabel={`/${player.gamesPlayed} played`} />
                 <StatBlock label="Referrals" value={player.referredCount} />
               </div>
-            </div>
+            </Card>
           );
         })}
 

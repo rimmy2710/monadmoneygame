@@ -1,13 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Badge from "../../components/ui/Badge";
+import Button from "../../components/ui/Button";
+import Card from "../../components/ui/Card";
+import SectionTitle from "../../components/ui/SectionTitle";
+import Spinner from "../../components/ui/Spinner";
 import { fetchGames, GameSummary } from "../../lib/api";
 
 const statusColors: Record<string, string> = {
-  Pending: "bg-blue-900 text-blue-100 border border-blue-700",
-  Ongoing: "bg-emerald-900 text-emerald-100 border border-emerald-700",
-  Finished: "bg-slate-800 text-slate-200 border border-slate-700",
-  Cancelled: "bg-red-900 text-red-100 border border-red-700",
+  Pending: "info",
+  Ongoing: "success",
+  Finished: "default",
+  Cancelled: "danger",
 };
 
 export default function LobbyPage() {
@@ -53,33 +58,26 @@ export default function LobbyPage() {
 
   return (
     <section className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-semibold">Master Mind Lobby</h2>
-          <p className="text-slate-300">Browse available games and jump in.</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 text-sm text-slate-300">
-            <input
-              type="checkbox"
-              checked={autoRefresh}
-              onChange={(e) => setAutoRefresh(e.target.checked)}
-              className="h-4 w-4 rounded border-slate-700 bg-slate-900"
-            />
-            Auto refresh (10s)
-          </label>
-          <button
-            className={[
-              "rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow",
-              "hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50",
-            ].join(" ")}
-            onClick={loadGames}
-            disabled={loading}
-          >
-            {loading ? "Refreshing..." : "Refresh"}
-          </button>
-        </div>
-      </div>
+      <SectionTitle
+        title="Master Mind Lobby"
+        description="Browse available games and jump in."
+        action={
+          <div className="flex flex-wrap items-center gap-3 text-sm text-slate-300">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={autoRefresh}
+                onChange={(e) => setAutoRefresh(e.target.checked)}
+                className="h-4 w-4 rounded border-white/20 bg-slate-900"
+              />
+              Auto refresh (10s)
+            </label>
+            <Button onClick={loadGames} disabled={loading}>
+              {loading && <Spinner />} Refresh
+            </Button>
+          </div>
+        }
+      />
 
       {lastUpdated && (
         <p className="text-sm text-slate-400">Last updated: {formatTime(lastUpdated)}</p>
@@ -92,21 +90,17 @@ export default function LobbyPage() {
           const isDisabled = game.status === "Finished" || game.status === "Cancelled" || isFull;
 
           return (
-            <div key={game.id} className="flex flex-col justify-between rounded-xl border border-slate-800 p-4 shadow-sm">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
+            <Card key={game.id} className="flex flex-col justify-between p-4 sm:p-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
-                    <h3 className="text-lg font-semibold">Game #{game.id}</h3>
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs font-semibold uppercase ${
-                        statusColors[game.status] ?? "bg-slate-800 text-slate-200 border border-slate-700"
-                      }`}
-                    >
-                      {game.status}
-                    </span>
+                    <h3 className="text-xl font-semibold">Game #{game.id}</h3>
+                    <Badge variant={statusColors[game.status] ?? "default"}>{game.status}</Badge>
                   </div>
                   {isFull && game.status === "Pending" && (
-                    <span className="text-xs font-semibold text-yellow-400">Full</span>
+                    <Badge variant="warning" className="uppercase">
+                      Full
+                    </Badge>
                   )}
                 </div>
 
@@ -118,12 +112,10 @@ export default function LobbyPage() {
                 </div>
               </div>
 
-              <div className="pt-3">
-                <button
-                  className={[
-                    "w-full rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow",
-                    "hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50",
-                  ].join(" ")}
+              <div className="pt-4">
+                <Button
+                  variant="primary"
+                  className="w-full"
                   onClick={() => handleJoin(game.id)}
                   disabled={isDisabled}
                 >
@@ -134,9 +126,9 @@ export default function LobbyPage() {
                       : isFull
                         ? "Lobby full"
                         : "Join"}
-                </button>
+                </Button>
               </div>
-            </div>
+            </Card>
           );
         })}
       </div>
@@ -150,7 +142,7 @@ export default function LobbyPage() {
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between rounded-lg border border-slate-800 bg-slate-900 px-3 py-2">
+    <div className="flex items-center justify-between rounded-lg border border-white/5 bg-slate-900/60 px-3 py-2">
       <span className="text-slate-400">{label}</span>
       <span className="font-semibold text-white">{value}</span>
     </div>
