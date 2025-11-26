@@ -61,6 +61,7 @@ export default async function meRoutes(fastify: FastifyInstance) {
         referredCount: r.referredCount,
       };
 
+      // track known player for leaderboard
       registerPlayer(address);
 
       return reply.send(profile);
