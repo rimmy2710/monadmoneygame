@@ -10,7 +10,7 @@ export interface GameSummary {
   entryFee: string;
   pool: string;
   currentRound: number;
-  players?: string[];
+  players?: string[]; // <- giữ lại từ Codex
 }
 
 export interface LeaderboardEntry {
