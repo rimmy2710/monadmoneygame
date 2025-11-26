@@ -10,6 +10,16 @@ import {
   useReferral,
   MeProfile,
 } from "../../lib/api";
+import Badge from "../../components/ui/Badge";
+import Button from "../../components/ui/Button";
+import Card from "../../components/ui/Card";
+import EmptyState from "../../components/ui/EmptyState";
+import ErrorState from "../../components/ui/ErrorState";
+import Divider from "../../components/ui/Divider";
+import SectionTitle from "../../components/ui/SectionTitle";
+import SkeletonCard from "../../components/ui/SkeletonCard";
+import Spinner from "../../components/ui/Spinner";
+import { showError, showSuccess, showWarning } from "../../components/ui/Toaster";
 
 const socials = [
   { key: "gmail", label: "Gmail" },
@@ -22,46 +32,53 @@ type SocialKey = (typeof socials)[number]["key"];
 export default function ProfilePage() {
   const [address, setAddress] = useState("");
   const [profile, setProfile] = useState<MeProfile | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [referralCodeInput, setReferralCodeInput] = useState("");
 
   const loadProfile = async () => {
     if (!address.trim()) {
-      setError("Please enter a wallet address.");
+      const message = "Please enter a wallet address.";
+      setError(message);
+      showWarning(message);
       return;
     }
-    setLoading(true);
+    setProfileLoading(true);
     setError(null);
-    setStatusMessage(null);
     try {
       const data = await fetchMe(address.trim());
       setProfile(data);
+      showSuccess("Profile loaded");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load profile");
+      const message = err instanceof Error ? err.message : "Failed to load profile";
+      setError(message);
+      showError(message);
     } finally {
-      setLoading(false);
+      setProfileLoading(false);
     }
   };
 
   const withProfileReload = async (action: () => Promise<unknown>) => {
     if (!address.trim()) {
-      setError("Please enter a wallet address first.");
+      const message = "Please enter a wallet address first.";
+      setError(message);
+      showWarning(message);
       return;
     }
-    setLoading(true);
+    setActionLoading(true);
     setError(null);
-    setStatusMessage(null);
     try {
       await action();
       const data = await fetchMe(address.trim());
       setProfile(data);
-      setStatusMessage("Updated successfully.");
+      showSuccess("Profile updated");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      const message = err instanceof Error ? err.message : "Something went wrong";
+      setError(message);
+      showError(message);
     } finally {
-      setLoading(false);
+      setActionLoading(false);
     }
   };
 
@@ -83,44 +100,47 @@ export default function ProfilePage() {
 
   const handleUseReferral = async () => {
     if (!referralCodeInput.trim()) {
-      setError("Enter a referral code to use.");
+      const message = "Enter a referral code to use.";
+      setError(message);
+      showWarning(message);
       return;
     }
-    setLoading(true);
+    setActionLoading(true);
     setError(null);
-    setStatusMessage(null);
     try {
       await useReferral(referralCodeInput.trim(), address.trim());
-      setStatusMessage("Referral applied.");
+      showSuccess("Referral applied");
       const data = await fetchMe(address.trim());
       setProfile(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to use referral");
+      const message = err instanceof Error ? err.message : "Failed to use referral";
+      setError(message);
+      showError(message);
     } finally {
-      setLoading(false);
+      setActionLoading(false);
     }
   };
 
   const copyReferralCode = async (code: string) => {
     try {
       await navigator.clipboard.writeText(code);
-      setStatusMessage("Referral code copied to clipboard.");
+      showSuccess("Referral code copied to clipboard");
     } catch (err) {
-      setError("Failed to copy referral code.");
+      const message = "Failed to copy referral code.";
+      setError(message);
+      showError(message);
     }
   };
 
   return (
     <section className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-semibold">Master Mind Profile</h2>
-          <p className="text-slate-300">View your stats and manage your rewards.</p>
-        </div>
-      </div>
+      <SectionTitle
+        title="Master Mind Profile"
+        description="View your stats and manage rewards and referrals."
+      />
 
-      <div className="rounded-xl border border-slate-800 p-4 shadow-sm space-y-4">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+      <Card className="space-y-4 p-4 sm:p-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
           <label className="text-sm text-slate-300" htmlFor="address">
             Wallet address
           </label>
@@ -129,134 +149,167 @@ export default function ProfilePage() {
             value={address}
             onChange={(e) => setAddress(e.target.value)}
             placeholder="Enter wallet address"
-            className="flex-1 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring focus:ring-indigo-500"
+            className="flex-1 rounded-lg border border-white/10 bg-slate-900/60 px-3 py-2 text-sm text-slate-100 focus:border-indigo-400 focus:outline-none"
           />
-          <button
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
-            onClick={loadProfile}
-            disabled={loading}
-          >
-            {loading ? "Loading..." : "Load profile"}
-          </button>
+          <Button onClick={loadProfile} disabled={profileLoading} className="min-w-[130px]">
+            {profileLoading && <Spinner />} Load profile
+          </Button>
         </div>
-        {error && <p className="text-sm text-red-400">{error}</p>}
-        {statusMessage && <p className="text-sm text-green-400">{statusMessage}</p>}
-      </div>
+      </Card>
+
+      {profileLoading && !profile && (
+        <div className="grid gap-4 md:grid-cols-2">
+          <SkeletonCard lines={4} />
+          <SkeletonCard lines={3} />
+          <SkeletonCard lines={5} />
+          <SkeletonCard lines={4} />
+        </div>
+      )}
+
+      {error && !profile && <ErrorState message={error} onRetry={loadProfile} />}
+      {error && profile && <ErrorState message={error} onRetry={loadProfile} />}
+
+      {!profile && !profileLoading && !error && (
+        <EmptyState
+          title="No profile loaded"
+          description="Enter your wallet address above to see your Master Mind progress."
+          action={
+            <Button onClick={loadProfile} variant="secondary">
+              Load profile
+            </Button>
+          }
+        />
+      )}
 
       {profile && (
         <div className="space-y-6">
           <div className="grid gap-4 md:grid-cols-2">
-            <div className="rounded-xl border border-slate-800 p-4 shadow-sm space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">Overview</h3>
-                <span className="rounded-full bg-indigo-600 px-3 py-1 text-xs font-semibold uppercase text-white">
-                  {profile.activityTier}
-                </span>
+            <Card className="space-y-5 p-4 sm:p-6">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-xl font-semibold">Overview</h3>
+                  <p className="text-sm text-slate-400">Your current medal status</p>
+                </div>
+                <Badge variant="info">{profile.activityTier}</Badge>
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <StatBlock label="Total medals" value={profile.medals} />
                 <StatBlock label="On-chain" value={profile.medalsOnChain} />
                 <StatBlock label="Pending" value={profile.medalsPending} />
               </div>
-              <button
-                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
+              <Button
+                variant="secondary"
                 onClick={handleClaimMedals}
-                disabled={loading || profile.medalsPending === 0}
+                disabled={actionLoading || profile.medalsPending === 0}
+                className="w-full sm:w-auto"
               >
-                Claim pending medals
-              </button>
-            </div>
+                {actionLoading && <Spinner />} Claim pending medals
+              </Button>
+            </Card>
 
-            <div className="rounded-xl border border-slate-800 p-4 shadow-sm space-y-4">
-              <h3 className="text-lg font-semibold">Games</h3>
+            <Card className="space-y-4 p-4 sm:p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-semibold">Games</h3>
+                  <p className="text-sm text-slate-400">Your performance so far</p>
+                </div>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <StatBlock label="Games played" value={profile.gamesPlayed} />
                 <StatBlock label="Games won" value={profile.gamesWon} />
               </div>
-            </div>
+            </Card>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <div className="rounded-xl border border-slate-800 p-4 shadow-sm space-y-4">
-              <h3 className="text-lg font-semibold">Socials</h3>
+            <Card className="space-y-4 p-4 sm:p-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-semibold">Socials</h3>
+                <Badge variant="default">Connections</Badge>
+              </div>
               <div className="space-y-3">
                 {socials.map((social) => {
                   const isLinked = profile.linkedSocials[social.key];
                   return (
                     <div
                       key={social.key}
-                      className="flex items-center justify-between rounded-lg border border-slate-800 px-3 py-2"
+                      className="flex items-center justify-between rounded-lg border border-white/5 bg-slate-900/40 px-3 py-2"
                     >
                       <div>
                         <p className="font-medium">{social.label}</p>
                         <p className="text-sm text-slate-400">{isLinked ? "Linked" : "Not linked"}</p>
                       </div>
-                      <button
-                        className="rounded-lg bg-slate-800 px-3 py-1 text-sm font-semibold text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      <Button
+                        variant={isLinked ? "soft" : "secondary"}
                         onClick={() => handleSocialToggle(social.key, isLinked)}
-                        disabled={loading}
+                        disabled={actionLoading}
+                        className="min-w-[96px]"
                       >
-                        {isLinked ? "Unlink" : "Link"}
-                      </button>
+                        {actionLoading && <Spinner />} {isLinked ? "Unlink" : "Link"}
+                      </Button>
                     </div>
                   );
                 })}
               </div>
-            </div>
+            </Card>
 
-            <div className="rounded-xl border border-slate-800 p-4 shadow-sm space-y-4">
-              <h3 className="text-lg font-semibold">Referral</h3>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between rounded-lg border border-slate-800 px-3 py-2">
-                  <div>
+            <Card className="space-y-5 p-4 sm:p-6">
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-semibold">Referral</h3>
+                  <Badge variant="warning">Rewards</Badge>
+                </div>
+                <p className="text-sm text-slate-400">Invite friends and earn medals.</p>
+              </div>
+
+              <div className="space-y-3 rounded-lg border border-white/5 bg-slate-900/40 p-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="space-y-1">
                     <p className="text-sm text-slate-400">Your referral code</p>
                     <p className="font-semibold">
                       {profile.referralCode ?? "No referral code yet"}
                     </p>
                   </div>
-                  <div className="flex gap-2">
-                    {profile.referralCode && (
-                      <button
-                        className="rounded-lg bg-slate-800 px-3 py-1 text-sm font-semibold text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  <div className="flex flex-wrap gap-2">
+                    {profile.referralCode ? (
+                      <Button
+                        variant="secondary"
                         onClick={() => copyReferralCode(profile.referralCode!)}
-                        disabled={loading}
+                        disabled={actionLoading}
                       >
-                        Copy code
-                      </button>
-                    )}
-                    {!profile.referralCode && (
-                      <button
-                        className="rounded-lg bg-indigo-600 px-3 py-1 text-sm font-semibold text-white shadow hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
-                        onClick={handleCreateReferral}
-                        disabled={loading}
-                      >
-                        Generate referral code
-                      </button>
+                        {actionLoading && <Spinner />} Copy code
+                      </Button>
+                    ) : (
+                      <Button onClick={handleCreateReferral} disabled={actionLoading}>
+                        {actionLoading && <Spinner />} Generate referral code
+                      </Button>
                     )}
                   </div>
                 </div>
-                <p className="text-sm text-slate-400">Invited {profile.referredCount} players</p>
+                <Divider />
+                <p className="text-sm text-slate-300">Invited {profile.referredCount} players</p>
               </div>
 
-              <div className="space-y-2 rounded-lg border border-slate-800 p-3">
+              <div className="space-y-3 rounded-lg border border-white/5 bg-slate-900/40 p-3">
                 <p className="text-sm font-semibold">Use a referral code</p>
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                   <input
                     value={referralCodeInput}
                     onChange={(e) => setReferralCodeInput(e.target.value)}
                     placeholder="Enter referral code"
-                    className="flex-1 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring focus:ring-indigo-500"
+                    className="flex-1 rounded-lg border border-white/10 bg-slate-900/60 px-3 py-2 text-sm text-slate-100 focus:border-indigo-400 focus:outline-none"
                   />
-                  <button
-                    className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
+                  <Button
+                    variant="secondary"
                     onClick={handleUseReferral}
-                    disabled={loading}
+                    disabled={actionLoading}
+                    className="sm:min-w-[140px]"
                   >
-                    Use referral
-                  </button>
+                    {actionLoading && <Spinner />} Use referral
+                  </Button>
                 </div>
               </div>
-            </div>
+            </Card>
           </div>
         </div>
       )}
@@ -266,7 +319,7 @@ export default function ProfilePage() {
 
 function StatBlock({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-lg border border-slate-800 bg-slate-900 px-3 py-2">
+    <div className="rounded-lg border border-white/5 bg-slate-900/60 px-3 py-2">
       <p className="text-xs uppercase tracking-wide text-slate-400">{label}</p>
       <p className="text-2xl font-bold text-white">{value}</p>
     </div>
