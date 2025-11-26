@@ -111,7 +111,7 @@ contract MasterMindGame {
     function createGame(uint16 maxPlayers, uint256 entryFee) external {
         require(msg.sender == admin, "only admin");
         require(entryFee > 0, "entry fee must be > 0");
-        require(maxPlayers >= 10 && maxPlayers <= 100, "maxPlayers must be 10-100");
+        require(maxPlayers >= 2 && maxPlayers <= 100, "maxPlayers must be 2-100");
 
         uint256 gameId = nextGameId;
         nextGameId++;
