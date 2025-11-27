@@ -4,7 +4,7 @@
   "main": "dist/server.js",
   "scripts": {
     "build": "tsc -p .",
-    "dev": "ts-node-dev src/server.ts",
+    "dev": "ts-node --transpile-only src/server.ts",
     "start": "node dist/server.js"
   },
   "dependencies": {
@@ -15,7 +15,6 @@
   "devDependencies": {
     "@types/node": "^20.11.30",
     "ts-node": "^10.9.2",
-    "ts-node-dev": "^2.0.0",
     "typescript": "^5.4.0"
   }
 }
