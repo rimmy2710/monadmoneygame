@@ -1,43 +1,52 @@
 // backend/src/routes/rooms.ts
-import { Router, Request, Response } from "express";
+import { FastifyInstance } from "fastify";
 
-const router = Router();
+export default async function roomsRoutes(fastify: FastifyInstance) {
 
-router.get("/", async (req: Request, res: Response) => { res.json([]); });
-router.get("/:id", async (req: Request, res: Response) => { res.json({}); });
-
-router.post("/public", async (req: Request, res: Response) => {
-  res.status(201).json({ roomId: 1, txHash: "0xTODO" });
-});
-
-router.post("/creator", async (req: Request, res: Response) => {
-  res.status(201).json({ roomId: 2, txHash: "0xTODO" });
-});
-
-router.post("/:id/join", async (req: Request, res: Response) => {
-  res.status(200).json({ ok: true });
-});
-
-router.post("/:id/start", async (req: Request, res: Response) => {
-  res.status(200).json({ roomId: Number(req.params.id), txHash: "0xTODO" });
-});
-
-router.post("/:id/settle", async (req: Request, res: Response) => {
-  res.status(200).json({ roomId: Number(req.params.id), txHash: "0xTODO" });
-});
-
-router.get("/:id/state", async (req: Request, res: Response) => {
-  res.json({
-    roomId: Number(req.params.id),
-    status: "Started",
-    currentRound: 1,
-    maxRounds: 3,
-    roundEndsAt: Date.now() + 15000,
-    players: [],
+  fastify.get("/rooms", async (request, reply) => {
+    return [];
   });
-});
 
-router.post("/:id/rounds/commit", async (req, res) => { res.json({ ok: true }); });
-router.post("/:id/rounds/reveal", async (req, res) => { res.json({ ok: true }); });
+  fastify.get("/rooms/:id", async (request, reply) => {
+    return { id: request.params.id };
+  });
 
-export default router;
+  fastify.post("/rooms/public", async (request, reply) => {
+    return { roomId: 1, txHash: "0xTODO" };
+  });
+
+  fastify.post("/rooms/creator", async (request, reply) => {
+    return { roomId: 2, txHash: "0xTODO" };
+  });
+
+  fastify.post("/rooms/:id/join", async (request, reply) => {
+    return { ok: true };
+  });
+
+  fastify.post("/rooms/:id/start", async (request, reply) => {
+    return { roomId: request.params.id, txHash: "0xTODO" };
+  });
+
+  fastify.post("/rooms/:id/settle", async (request, reply) => {
+    return { roomId: request.params.id, txHash: "0xTODO" };
+  });
+
+  fastify.get("/rooms/:id/state", async (request, reply) => {
+    return {
+      roomId: request.params.id,
+      status: "Started",
+      currentRound: 1,
+      maxRounds: 3,
+      roundEndsAt: Date.now() + 15000,
+      players: [],
+    };
+  });
+
+  fastify.post("/rooms/:id/rounds/commit", async (request, reply) => {
+    return { ok: true };
+  });
+
+  fastify.post("/rooms/:id/rounds/reveal", async (request, reply) => {
+    return { ok: true };
+  });
+}
