@@ -1,26 +1,10 @@
-// backend/src/server.ts
-import express from "express";
-import cors from "cors";
-import roomsRouter from "./routes/rooms";
-import usersRouter from "./routes/users";
-import metaRouter from "./routes/meta";
+import Fastify from "fastify";
+import roomsRoutes from "./routes/rooms";
 
-const app = express();
+const fastify = Fastify({ logger: true });
 
-app.use(cors());
-app.use(express.json());
+fastify.register(roomsRoutes);
 
-// health check đơn giản
-app.get("/health", (_req, res) => {
-  res.json({ ok: true });
-});
+fastify.get("/health", async () => ({ ok: true }));
 
-// routes chính
-app.use("/rooms", roomsRouter);
-app.use("/", usersRouter);   // /me, /leaderboard
-app.use("/", metaRouter);    // /dev/status
-
-const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => {
-  console.log(`Backend listening on port ${PORT}`);
-});
+fastify.listen({ port: 4000, host: "0.0.0.0" });
