@@ -13,6 +13,7 @@ contract MasterMindGame {
 
     event Deposited(address indexed user, uint256 amount);
     event Withdrawn(address indexed user, uint256 amount);
+
     event GameCreated(uint256 indexed gameId, uint16 maxPlayers, uint256 entryFee);
     event PlayerJoined(uint256 indexed gameId, address indexed player, uint256 entryFee);
     event MoveCommitted(uint256 indexed gameId, address indexed player, uint8 round);
@@ -31,6 +32,7 @@ contract MasterMindGame {
         uint256 platformFee,
         address[5] winners
     );
+
 
     enum GameStatus {
         Pending,
@@ -78,7 +80,10 @@ contract MasterMindGame {
     mapping(address => uint256) public medals;
     mapping(uint256 => Game) public games;
     mapping(uint256 => mapping(address => PlayerState)) public playerStates;
+
     mapping(uint256 => bool) public prizeDistributed;
+
+
 
     constructor(address _usdc, address _masterMindNft, uint16 _platformFeeBps) {
         admin = msg.sender;
@@ -107,6 +112,7 @@ contract MasterMindGame {
 
         emit Withdrawn(msg.sender, amount);
     }
+
 
     function createGame(uint16 maxPlayers, uint256 entryFee) external {
         require(msg.sender == admin, "only admin");
@@ -207,11 +213,21 @@ contract MasterMindGame {
         emit MoveRevealed(gameId, msg.sender, ps.currentRound, RpsChoice(choice));
     }
 
+    function createGame(uint16 maxPlayers, uint256 entryFee) external {}
+
+    function joinGame(uint256 gameId) external {}
+
+    function commitMove(uint256 gameId, bytes32 commitment) external {}
+
+    function revealMove(uint256 gameId, uint8 choice, bytes32 salt) external {}
+
+
     function finalizeRound(
         uint256 gameId,
         address[] calldata playersA,
         address[] calldata playersB,
         address luckyPassPlayer
+
     ) external {
         require(msg.sender == admin, "only admin");
 
@@ -373,4 +389,9 @@ contract MasterMindGame {
 
         return 2;
     }
+=======
+    ) external {}
+
+    function distributePrize(uint256 gameId, address[5] calldata winners) external {}
+
 }
