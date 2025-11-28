@@ -1,3 +1,10 @@
+
+export default function LobbyPage() {
+  return (
+    <section className="space-y-4">
+      <h2 className="text-xl font-semibold">Lobby</h2>
+      <p className="text-slate-300">Browse open games and join the action.</p>
+
 import Card from "../components/ui/Card";
 import SectionTitle from "../components/ui/SectionTitle";
 
@@ -15,6 +22,7 @@ export default function HomePage() {
           ready with consistent UI components for a smooth first demo.
         </p>
       </Card>
+
     </section>
   );
 }

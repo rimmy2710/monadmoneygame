@@ -1,8 +1,10 @@
+# Monad Master Mind
+
 ## Environment variables
 
 ### Backend
 - `MONAD_RPC_URL` – RPC endpoint URL.
-- `CONTRACT_ADDRESS` – Master Mind contract address on Monad.
+- `MASTER_MIND_CONTRACT` – Master Mind contract address on Monad.
 - `PORT` – backend port (default `4000`).
 - `CORS_ORIGIN` – frontend origin allowed by CORS (e.g. `http://localhost:3000`).
 
